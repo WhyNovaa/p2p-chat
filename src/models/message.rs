@@ -1,17 +1,32 @@
 use std::io::{Read, Write};
+use std::path::Path;
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use crate::models::errors::FileError;
+use crate::models::file::File;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
-    pub data: String,
+    pub data: Option<String>,
+    pub file: Option<File>,
 }
 
 impl Message {
-    pub fn new(data: String) -> Self {
-        Self {
-            data
-        }
+    pub async fn new(data: Option<String>, path: Option<impl AsRef<Path> + Clone>) -> Result<Self, FileError> {
+
+        let file = match path.is_some() {
+            true => Some(File::new(path.unwrap()).await?),
+            false => None,
+        };
+
+        Ok(Self {
+            data,
+            file
+        })
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_none() && self.file.is_none()
     }
 }
 

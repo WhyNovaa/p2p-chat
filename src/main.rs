@@ -4,6 +4,7 @@ mod models;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
     SwarmManager::new()?.run().await?;
 
     Ok(())

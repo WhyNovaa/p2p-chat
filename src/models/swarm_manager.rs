@@ -1,11 +1,12 @@
 use libp2p::{gossipsub, noise, tcp, yamux, Swarm};
 use crate::models::behaviour::{ChatBehaviour, ChatBehaviourEvent};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use futures::StreamExt;
 use libp2p::mdns::Event;
 use libp2p::swarm::SwarmEvent;
 use tokio::io;
 use tokio::io::AsyncBufReadExt;
+use crate::models::message::{Decode, Encode, Message};
 
 pub struct SwarmManager {
     swarm: Swarm<ChatBehaviour>
@@ -13,6 +14,7 @@ pub struct SwarmManager {
 
 impl SwarmManager {
     pub fn new() -> Result<Self> {
+        log::info!("Creating SwarmManager");
         let mut swarm = build_swarm()?;
 
         let topic = gossipsub::IdentTopic::new("test-net");
@@ -35,9 +37,17 @@ impl SwarmManager {
         loop {
             tokio::select! {
                 Ok(Some(line)) = stdin.next_line() => {
+                    let msg = match Message::new(Some(line), None::<std::path::PathBuf>).await {
+                        Ok(msg) => msg,
+                        Err(e) => {
+                            log::error!("{e}");
+                            continue;
+                        },
+                    };
+
                     if let Err(e) = self
                         .swarm.behaviour_mut().gossipsub
-                        .publish(topic.clone(), line.as_bytes()) {
+                        .publish(topic.clone(), msg.encode_to_vec()?) {
                         println!("Publish error: {e:?}");
                     }
                 },
@@ -69,7 +79,8 @@ impl SwarmManager {
                                                                     message_id: id,
                                                                     message,
                                                                 })) => {
-                println!("Got message: '{}' with id: {id} from peer: {peer_id}", String::from_utf8_lossy(&message.data))
+                let msg = Message::decode(&mut message.data.as_slice());
+                println!("Got message: '{:?}' with id: {id} from peer: {peer_id}", msg)
             },
             SwarmEvent::NewListenAddr { address, .. } => {
                 println!("Local node is listening on {address}");
