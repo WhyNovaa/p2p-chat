@@ -4,3 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tokio = {version = "1.44.1", features = ["full"]}
+clap = { version = "4.5.32", features = ["derive"] }
+libp2p = { version = "0.55.0", features =[
+    "macros", "tcp", "tokio", "websocket",
+    "dns", "noise", "yamux", "ping", "mdns",
+    "gossipsub", "quic"
+], default-features = false}
+futures = "0.3.31"
+anyhow = "1.0.97"
+serde = { version = "1.0.219", features = ["derive"] }
+bincode = {version = "2.0.1", features = ["serde", "std"]}
+log = "0.4.27"
