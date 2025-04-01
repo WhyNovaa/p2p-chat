@@ -1,20 +1,16 @@
 use std::io::{Read, Write};
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Message {
     pub data: String,
-    timestamp: Duration,
 }
 
 impl Message {
     pub fn new(data: String) -> Self {
-        let timestamp = std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap();
         Self {
-            data,
-            timestamp,
+            data
         }
     }
 }
