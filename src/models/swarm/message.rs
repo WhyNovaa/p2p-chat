@@ -2,8 +2,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
-use crate::models::errors::FileError;
-use crate::models::file::File;
+use crate::models::swarm::errors::FileError;
+use crate::models::swarm::file::File;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Message {

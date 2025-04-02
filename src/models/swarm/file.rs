@@ -1,6 +1,6 @@
 use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::models::errors::FileError;
+use crate::models::swarm::errors::FileError;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct File {
@@ -52,7 +52,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_no_filename_path() {
+    async fn test_empty_filename() {
         let dir = tempfile::tempdir().unwrap();
         let result = File::new(dir.path()).await;
         assert!(matches!(result, Err(FileError::CouldntReadFile)));
