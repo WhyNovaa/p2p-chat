@@ -1,24 +1,26 @@
 use libp2p::{gossipsub, noise, tcp, yamux, Swarm};
 use crate::models::swarm::behaviour::{ChatBehaviour, ChatBehaviourEvent};
-use anyhow::Result;
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::{IdentTopic, SubscriptionError};
 use libp2p::mdns::Event;
 use libp2p::swarm::SwarmEvent;
 use tokio::io;
 use tokio::io::AsyncBufReadExt;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc;
 use crate::models::client::command::Command;
+use crate::models::swarm::errors;
+use crate::models::swarm::errors::SendingError;
 use crate::models::swarm::message::{Decode, Encode, Message};
 
 pub struct SwarmManager {
     swarm: Swarm<ChatBehaviour>,
-    receiver: Receiver<Command>,
-    sender: Sender<Message>,
+    command_receiver: mpsc::Receiver<Command>,
+    msg_sender: mpsc::Sender<Message>,
+    current_topic: Option<IdentTopic>,
 }
 
 impl SwarmManager {
-    pub fn new(sender: Sender<Message>, receiver: Receiver<Command>) -> Result<Self> {
+    pub fn build(msg_sender: mpsc::Sender<Message>, command_receiver: mpsc::Receiver<Command>) -> anyhow::Result<Self> {
         log::info!("Creating SwarmManager");
         let mut swarm = build_swarm()?;
 
@@ -33,23 +35,34 @@ impl SwarmManager {
 
         Ok(Self{
             swarm,
-            receiver,
-            sender,
+            command_receiver,
+            msg_sender,
+            current_topic: None,
         })
     }
 
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) {
         log::info!("Running...");
-        let mut stdin = io::BufReader::new(io::stdin()).lines();
-
-        let topic = IdentTopic::new("test-net");
 
         loop {
             tokio::select! {
                 event = self.swarm.select_next_some() => self.handle_event(event).await,
-                command = self.receiver.recv() => self.handle_command(command).await,
+                command = self.command_receiver.recv() => self.handle_command(command).await,
             }
         }
+    }
+
+    pub fn with_topic(mut self, topic_name: impl Into<String>) -> Self {
+        match self.subscribe(topic_name) {
+            Ok(res) => {
+                match res {
+                    true => log::info!("Swarm subscribed to the topic successfully"),
+                    false => log::warn!("Swarm is already subscribed to to this topic"),
+                }
+            }
+            Err(_) => log::error!("Something went wrong"),
+        };
+        self
     }
 
     pub async fn handle_event(&mut self, event: SwarmEvent<ChatBehaviourEvent>) {
@@ -75,7 +88,9 @@ impl SwarmManager {
                                                                     message_id: id,
                                                                     message,
                                                                 })) => {
-                let msg = Message::decode(&mut message.data.as_slice());
+                //todo
+                let msg = Message::decode(&mut message.data.as_slice()).unwrap();
+                self.msg_sender.send(msg.clone()).await.unwrap();
                 log::info!("Got message: '{:?}' with id: {id} from peer: {peer_id}", msg)
             },
             SwarmEvent::NewListenAddr { address, .. } => {
@@ -88,27 +103,51 @@ impl SwarmManager {
     async fn handle_command(&mut self, command: Option<Command>) {
         match command {
             Some(Command::SendMessage { response_sender, msg}) => {
-                //todo
+                log::info!("Sending message...");
+
+                let ans = match self.send_message(msg) {
+                    Ok(_) => "Ok".to_string(),
+                    Err(SendingError::NoSubscribedTopic) => {
+                        log::info!("Swarm not subscribed to any topic");
+                        "You are not subscribed to any topic".to_string()
+                    }
+                    Err(SendingError::CantEncodeMessage) => {
+                        log::info!("Can't encode message");
+                        "Something wrong with the message".to_string()
+                    }
+                    Err(SendingError::Other(e)) => {
+                        log::info!("Sending error: {e}");
+                        "Something went wrong while sending message".to_string()
+                    }
+                };
+
+                if let Err(e) = response_sender.send(ans) {
+                    log::error!("Response wasn't sent to client: {e}");
+                }
+
             }
             Some(Command::Subscribe { response_sender, topic_name,  }) => {
-                let ans = match self.subscribe(topic_name).await {
+                log::info!("Subscribing topic...");
+
+                let ans = match self.subscribe(topic_name) {
                     Ok(res) => {
                         match res {
-                            true => "You have unsubscribed successfully",
-                            false => "You haven't been subscribed to this topic",
+                            true => "You have subscribed to the topic successfully",
+                            false => "You are already subscribed to to this topic",
                         }
                     }
                     Err(_) => "Something went wrong",
                 };
 
-                match response_sender.send(ans.to_string()) {
-                    Ok(_) => {},
-                    Err(e) => log::error!("Response wasn't sent to client: {e}"),
+                if let Err(e) =  response_sender.send(ans.to_string()) {
+                    log::error!("Response wasn't sent to client: {e}");
                 };
             },
             Some(Command::Unsubscribe { response_sender, topic_name }) => {
-                let ans = match self.unsubscribe(topic_name).await {
-                    true => "You have unsubscribed successfully",
+                log::info!("Unsubscribing topic...");
+
+                let ans = match self.unsubscribe(topic_name) {
+                    true => "You have unsubscribed from the topic successfully",
                     false => "You haven't been subscribed to this topic",
                 };
 
@@ -121,7 +160,7 @@ impl SwarmManager {
         }
     }
 
-    pub async fn subscribe(&mut self, topic_name: String) -> Result<bool> {
+    pub fn subscribe(&mut self, topic_name: impl Into<String>) -> anyhow::Result<bool> {
         log::info!("Subscribing topic...");
         let topic = IdentTopic::new(topic_name);
 
@@ -130,10 +169,12 @@ impl SwarmManager {
             .gossipsub
             .subscribe(&topic)?;
 
+        self.current_topic = Some(topic);
+
         Ok(res)
     }
 
-    pub async fn unsubscribe(&mut self, topic_name: String) -> bool {
+    pub fn unsubscribe(&mut self, topic_name: String) -> bool {
         log::info!("Unsubscribing topic...");
         let topic = IdentTopic::new(topic_name);
 
@@ -145,9 +186,29 @@ impl SwarmManager {
 
         res
     }
+
+    pub fn send_message(&mut self, message: Message) -> Result<(), SendingError> {
+        if self.current_topic.is_none() {
+            return Err(SendingError::NoSubscribedTopic);
+        }
+
+        let topic = self.current_topic.clone().unwrap();
+
+        let encoded_message = message
+            .encode_to_vec()
+            .map_err(|_| SendingError::CantEncodeMessage)?;
+
+        self
+            .swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(topic, encoded_message)?;
+
+        Ok(())
+    }
 }
 
-fn build_swarm() -> Result<Swarm<ChatBehaviour>> {
+fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
     let swarm = libp2p::SwarmBuilder::with_new_identity()
         .with_tokio()
         .with_tcp(

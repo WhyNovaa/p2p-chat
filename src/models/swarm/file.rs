@@ -2,7 +2,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use crate::models::swarm::errors::FileError;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct File {
     pub name: String,
     pub data: Vec<u8>,

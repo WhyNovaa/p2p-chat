@@ -5,14 +5,15 @@ use serde::de::DeserializeOwned;
 use crate::models::swarm::errors::FileError;
 use crate::models::swarm::file::File;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Message {
     pub data: Option<String>,
     pub file: Option<File>,
 }
 
 impl Message {
-    pub async fn new(data: Option<String>, path: Option<impl AsRef<Path> + Clone>) -> Result<Self, FileError> {
+    // Won't panic if path is None
+    pub async fn build(data: Option<String>, path: Option<impl AsRef<Path> + Clone>) -> Result<Self, FileError> {
 
         let file = match path.is_some() {
             true => Some(File::new(path.unwrap()).await?),
