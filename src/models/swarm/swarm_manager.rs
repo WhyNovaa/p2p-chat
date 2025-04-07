@@ -1,14 +1,11 @@
 use libp2p::{gossipsub, noise, tcp, yamux, Swarm};
 use crate::models::swarm::behaviour::{ChatBehaviour, ChatBehaviourEvent};
 use libp2p::futures::StreamExt;
-use libp2p::gossipsub::{IdentTopic, SubscriptionError};
+use libp2p::gossipsub::IdentTopic;
 use libp2p::mdns::Event;
 use libp2p::swarm::SwarmEvent;
-use tokio::io;
-use tokio::io::AsyncBufReadExt;
 use tokio::sync::mpsc;
 use crate::models::client::command::Command;
-use crate::models::swarm::errors;
 use crate::models::swarm::errors::SendingError;
 use crate::models::swarm::message::{Decode, Encode, Message};
 
@@ -23,12 +20,6 @@ impl SwarmManager {
     pub fn build(msg_sender: mpsc::Sender<Message>, command_receiver: mpsc::Receiver<Command>) -> anyhow::Result<Self> {
         log::info!("Creating SwarmManager");
         let mut swarm = build_swarm()?;
-
-        let topic = IdentTopic::new("test-net");
-
-        swarm.behaviour_mut()
-            .gossipsub
-            .subscribe(&topic)?;
 
         swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
         swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
@@ -88,10 +79,19 @@ impl SwarmManager {
                                                                     message_id: id,
                                                                     message,
                                                                 })) => {
-                //todo
-                let msg = Message::decode(&mut message.data.as_slice()).unwrap();
-                self.msg_sender.send(msg.clone()).await.unwrap();
-                log::info!("Got message: '{:?}' with id: {id} from peer: {peer_id}", msg)
+                let msg = match Message::decode(&mut message.data.as_slice()) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        log::error!("Couldn't decode message: {}", e);
+                        return;
+                    },
+                };
+
+                log::info!("Got message: '{:?}' with id: {id} from peer: {peer_id}", msg);
+                match self.msg_sender.send(msg).await {
+                    Ok(_) => {}
+                    Err(e) => log::error!("Couldn't send message to client: {}", e),
+                }
             },
             SwarmEvent::NewListenAddr { address, .. } => {
                 log::info!("Local node is listening on {address}");
@@ -184,6 +184,8 @@ impl SwarmManager {
             .gossipsub
             .unsubscribe(&topic);
 
+        self.current_topic = None;
+
         res
     }
 
@@ -224,4 +226,86 @@ fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
         .build();
 
     Ok(swarm)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use libp2p::gossipsub::PublishError;
+    use tokio::sync::oneshot;
+    use super::*;
+
+    #[tokio::test]
+    async fn communication_test() -> anyhow::Result<()> {
+        let (command_sender1, command_receiver1) = mpsc::channel::<Command>(20);
+        let (msg_sender1, msg_receiver1) = mpsc::channel::<Message>(20);
+        let mut sw1 = SwarmManager::build(msg_sender1, command_receiver1)?.with_topic("test");
+
+        let (command_sender2, command_receiver2) = mpsc::channel::<Command>(20);
+        let (msg_sender2, mut msg_receiver2) = mpsc::channel::<Message>(20);
+        let mut sw2 = SwarmManager::build(msg_sender2, command_receiver2)?.with_topic("test");
+
+        for i in 0..24 {
+            let ev = sw1.swarm.select_next_some().await;
+            sw1.handle_event(ev).await;
+            let ev = sw2.swarm.select_next_some().await;
+            sw2.handle_event(ev).await;
+        }
+
+        let msg = Message::build(Some("Test".to_string()), None::<PathBuf>).await?;
+        let (one_shot_s, _) = oneshot::channel::<String>();
+        let command = Command::SendMessage { response_sender: one_shot_s, msg: msg.clone() };
+
+        command_sender1.send(command).await?;
+
+        let command = sw1.command_receiver.recv().await;
+
+        sw1.handle_command(command).await;
+
+        let ev = sw2.swarm.select_next_some().await;
+        sw2.handle_event(ev).await;
+
+        let received_msg = msg_receiver2.try_recv()?;
+
+        assert_eq!(received_msg, msg);
+
+        Ok(())
+    }
+    #[tokio::test]
+    async fn send_message_without_topic() -> anyhow::Result<()> {
+        let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
+        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let mut sw = SwarmManager::build(msg_sender, command_receiver)?;
+
+        for _ in 0..8 {
+            let ev = sw.swarm.select_next_some().await;
+            sw.handle_event(ev).await;
+        }
+
+        let msg = Message::build(Some("Test".to_string()), None::<PathBuf>).await?;
+        let res = sw.send_message(msg);
+
+        assert_eq!(res.unwrap_err().to_string(), SendingError::NoSubscribedTopic.to_string());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn send_message_without_connected_peers() -> anyhow::Result<()> {
+        let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
+        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let mut sw = SwarmManager::build(msg_sender, command_receiver)?.with_topic("test");
+
+        for _ in 0..8 {
+            let ev = sw.swarm.select_next_some().await;
+            sw.handle_event(ev).await;
+        }
+
+        let msg = Message::build(Some("Test".to_string()), None::<PathBuf>).await?;
+        let res = sw.send_message(msg);
+
+        assert_eq!(res.unwrap_err().to_string(), SendingError::Other(PublishError::InsufficientPeers).to_string());
+
+        Ok(())
+    }
 }

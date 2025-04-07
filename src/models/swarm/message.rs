@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use crate::models::swarm::errors::FileError;
 use crate::models::swarm::file::File;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Message {
     pub data: Option<String>,
     pub file: Option<File>,
