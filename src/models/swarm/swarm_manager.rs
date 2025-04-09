@@ -238,14 +238,14 @@ mod tests {
     #[tokio::test]
     async fn communication_test() -> anyhow::Result<()> {
         let (command_sender1, command_receiver1) = mpsc::channel::<Command>(20);
-        let (msg_sender1, msg_receiver1) = mpsc::channel::<Message>(20);
+        let (msg_sender1, _) = mpsc::channel::<Message>(20);
         let mut sw1 = SwarmManager::build(msg_sender1, command_receiver1)?.with_topic("test");
 
-        let (command_sender2, command_receiver2) = mpsc::channel::<Command>(20);
+        let (_, command_receiver2) = mpsc::channel::<Command>(20);
         let (msg_sender2, mut msg_receiver2) = mpsc::channel::<Message>(20);
         let mut sw2 = SwarmManager::build(msg_sender2, command_receiver2)?.with_topic("test");
 
-        for i in 0..24 {
+        for _ in 0..24 {
             let ev = sw1.swarm.select_next_some().await;
             sw1.handle_event(ev).await;
             let ev = sw2.swarm.select_next_some().await;
@@ -259,7 +259,6 @@ mod tests {
         command_sender1.send(command).await?;
 
         let command = sw1.command_receiver.recv().await;
-
         sw1.handle_command(command).await;
 
         let ev = sw2.swarm.select_next_some().await;
@@ -273,7 +272,7 @@ mod tests {
     }
     #[tokio::test]
     async fn send_message_without_topic() -> anyhow::Result<()> {
-        let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
+        let (_, command_receiver) = mpsc::channel::<Command>(20);
         let (msg_sender, _) = mpsc::channel::<Message>(20);
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?;
 
@@ -292,7 +291,7 @@ mod tests {
 
     #[tokio::test]
     async fn send_message_without_connected_peers() -> anyhow::Result<()> {
-        let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
+        let (_, command_receiver) = mpsc::channel::<Command>(20);
         let (msg_sender, _) = mpsc::channel::<Message>(20);
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?.with_topic("test");
 
@@ -305,6 +304,56 @@ mod tests {
         let res = sw.send_message(msg);
 
         assert_eq!(res.unwrap_err().to_string(), SendingError::Other(PublishError::InsufficientPeers).to_string());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn subscribe_command() -> anyhow::Result<()> {
+        let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
+        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let mut sw = SwarmManager::build(msg_sender, command_receiver)?;
+
+
+        for _ in 0..8 {
+            let ev = sw.swarm.select_next_some().await;
+            sw.handle_event(ev).await;
+        }
+
+        let (one_shot_s, _) = oneshot::channel::<String>();
+        let command = Command::Subscribe { response_sender: one_shot_s, topic_name: "test".to_string() };
+
+        command_sender.send(command).await?;
+
+        let command = sw.command_receiver.recv().await;
+        sw.handle_command(command).await;
+
+        assert_eq!(sw.current_topic.unwrap().to_string(), "test".to_string());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn unsubscribe_command() -> anyhow::Result<()> {
+        let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
+        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let mut sw = SwarmManager::build(msg_sender, command_receiver)?.with_topic("test");
+
+
+        for _ in 0..8 {
+            let ev = sw.swarm.select_next_some().await;
+            sw.handle_event(ev).await;
+        }
+
+        let (one_shot_s, _) = oneshot::channel::<String>();
+        let command = Command::Unsubscribe { response_sender: one_shot_s, topic_name: "test".to_string() };
+
+        command_sender.send(command).await?;
+
+        let command = sw.command_receiver.recv().await;
+        sw.handle_command(command).await;
+
+        assert!(sw.current_topic.is_none());
 
         Ok(())
     }
