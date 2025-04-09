@@ -4,6 +4,8 @@ use crate::models::client::command::Command;
 use crate::models::swarm::message::Message;
 use crate::models::swarm::swarm_manager::SwarmManager;
 use anyhow::Result;
+use crate::models::swarm::short_peer_id::ShortPeerId;
+
 pub struct App {
     client: Client,
     swarm_manager: SwarmManager,
@@ -13,7 +15,7 @@ impl App {
     pub fn new() -> Result<Self> {
         let (command_sender, command_receiver) = mpsc::channel::<Command>(30);
 
-        let (msg_sender, msg_receiver) = mpsc::channel::<Message>(30);
+        let (msg_sender, msg_receiver) = mpsc::channel::<(Message, ShortPeerId)>(30);
 
         let client = Client::new(msg_receiver, command_sender);
 

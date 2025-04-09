@@ -1,4 +1,4 @@
-use libp2p::{gossipsub, noise, tcp, yamux, Swarm};
+use libp2p::{gossipsub, noise, tcp, yamux, PeerId, Swarm};
 use crate::models::swarm::behaviour::{ChatBehaviour, ChatBehaviourEvent};
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub::IdentTopic;
@@ -7,22 +7,28 @@ use libp2p::swarm::SwarmEvent;
 use tokio::sync::mpsc;
 use crate::models::client::command::Command;
 use crate::models::swarm::errors::SendingError;
-use crate::models::swarm::message::{Decode, Encode, Message};
+use crate::models::swarm::message::Message;
+use crate::traits::decode::Decode;
+use crate::traits::encode::Encode;
+use crate::models::swarm::short_peer_id::ShortPeerId;
 
 pub struct SwarmManager {
     swarm: Swarm<ChatBehaviour>,
     command_receiver: mpsc::Receiver<Command>,
-    msg_sender: mpsc::Sender<Message>,
+    msg_sender: mpsc::Sender<(Message, ShortPeerId)>,
     current_topic: Option<IdentTopic>,
 }
 
 impl SwarmManager {
-    pub fn build(msg_sender: mpsc::Sender<Message>, command_receiver: mpsc::Receiver<Command>) -> anyhow::Result<Self> {
+    pub fn build(msg_sender: mpsc::Sender<(Message, ShortPeerId)>, command_receiver: mpsc::Receiver<Command>) -> anyhow::Result<Self> {
         log::info!("Creating SwarmManager");
         let mut swarm = build_swarm()?;
 
         swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
         swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+
+
+        println!("{}", short_peer_id(swarm.local_peer_id()));
 
         Ok(Self{
             swarm,
@@ -87,8 +93,14 @@ impl SwarmManager {
                     },
                 };
 
+                if msg.is_empty() {
+                    return;
+                }
+
+                let sender_peer_id = ShortPeerId::from(&peer_id);
+
                 log::info!("Got message: '{:?}' with id: {id} from peer: {peer_id}", msg);
-                match self.msg_sender.send(msg).await {
+                match self.msg_sender.send((msg, sender_peer_id)).await {
                     Ok(_) => {}
                     Err(e) => log::error!("Couldn't send message to client: {}", e),
                 }
@@ -228,6 +240,10 @@ fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
     Ok(swarm)
 }
 
+fn short_peer_id(peer_id: &PeerId) -> String {
+    format!("{}...", &peer_id.to_string()[..8])
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -238,11 +254,13 @@ mod tests {
     #[tokio::test]
     async fn communication_test() -> anyhow::Result<()> {
         let (command_sender1, command_receiver1) = mpsc::channel::<Command>(20);
-        let (msg_sender1, _) = mpsc::channel::<Message>(20);
+        let (msg_sender1, _) = mpsc::channel::<(Message, ShortPeerId)>(20);
+
         let mut sw1 = SwarmManager::build(msg_sender1, command_receiver1)?.with_topic("test");
 
         let (_, command_receiver2) = mpsc::channel::<Command>(20);
-        let (msg_sender2, mut msg_receiver2) = mpsc::channel::<Message>(20);
+        let (msg_sender2, mut msg_receiver2) = mpsc::channel::<(Message, ShortPeerId)>(20);
+
         let mut sw2 = SwarmManager::build(msg_sender2, command_receiver2)?.with_topic("test");
 
         for _ in 0..24 {
@@ -264,7 +282,7 @@ mod tests {
         let ev = sw2.swarm.select_next_some().await;
         sw2.handle_event(ev).await;
 
-        let received_msg = msg_receiver2.try_recv()?;
+        let (received_msg, _) = msg_receiver2.try_recv()?;
 
         assert_eq!(received_msg, msg);
 
@@ -273,7 +291,8 @@ mod tests {
     #[tokio::test]
     async fn send_message_without_topic() -> anyhow::Result<()> {
         let (_, command_receiver) = mpsc::channel::<Command>(20);
-        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let (msg_sender, _) = mpsc::channel::<(Message, ShortPeerId)>(20);
+
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?;
 
         for _ in 0..8 {
@@ -292,7 +311,8 @@ mod tests {
     #[tokio::test]
     async fn send_message_without_connected_peers() -> anyhow::Result<()> {
         let (_, command_receiver) = mpsc::channel::<Command>(20);
-        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let (msg_sender, _) = mpsc::channel::<(Message, ShortPeerId)>(20);
+
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?.with_topic("test");
 
         for _ in 0..8 {
@@ -311,7 +331,8 @@ mod tests {
     #[tokio::test]
     async fn subscribe_command() -> anyhow::Result<()> {
         let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
-        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let (msg_sender, _) = mpsc::channel::<(Message, ShortPeerId)>(20);
+
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?;
 
 
@@ -336,7 +357,7 @@ mod tests {
     #[tokio::test]
     async fn unsubscribe_command() -> anyhow::Result<()> {
         let (command_sender, command_receiver) = mpsc::channel::<Command>(20);
-        let (msg_sender, _) = mpsc::channel::<Message>(20);
+        let (msg_sender, _) = mpsc::channel::<(Message, ShortPeerId)>(20);
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?.with_topic("test");
 
 

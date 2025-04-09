@@ -14,7 +14,7 @@ pub struct ChatBehaviour {
 impl ChatBehaviour {
     pub fn build(key: &Keypair) -> Result<Self> {
         let message_id_fn = |message: &gossipsub::Message| {
-            let sequence_number = message.sequence_number.expect("Anonym sent message?");
+            let sequence_number = message.sequence_number.expect("Anonym can't sent message");
             let peer_id_as_base58  = message.source.as_ref().map_or("".to_string(), |s| s.to_base58());
 
             let unique_id = format!("{}-{}", sequence_number, peer_id_as_base58);
