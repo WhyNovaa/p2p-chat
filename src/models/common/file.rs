@@ -21,6 +21,15 @@ impl File {
 
         Ok(Self { name, data })
     }
+
+    pub async fn save(self, path: String) {
+        let full_path = format!("{}/{}", path, self.name);
+
+        match tokio::fs::write(full_path, self.data).await {
+            Ok(_) => log::info!("File: {} saved successfully", self.name),
+            Err(e) => log::error!("Error while saving file: {e}"),
+        }
+    }
 }
 
 #[cfg(test)]

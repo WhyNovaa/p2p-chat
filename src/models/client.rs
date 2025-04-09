@@ -8,19 +8,30 @@ use crate::models::common::short_peer_id::ShortPeerId;
 
 pub struct Client {
     command_sender: mpsc::Sender<Command>,
-    /// message and first 8 sender PeerId symbols
+    /// message and first 8 symbols of sender PeerId
     msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>,
+    download_path: String,
 }
 
 impl Client {
     pub fn new(msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>, command_sender: mpsc::Sender<Command>) -> Self {
-        Self {
+
+        let download_path = "./downloads".to_string();
+
+        let client = Self {
             command_sender,
             msg_receiver,
-        }
+            download_path,
+        };
+
+        client.create_download_dir();
+
+        client
     }
 
     pub async fn start_receiving(mut msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>) {
+        log::info!("Start receiving");
+
         tokio::spawn(async move {
             loop {
                 if let Ok(response) = msg_receiver.try_recv() {
@@ -32,6 +43,8 @@ impl Client {
     }
 
     pub async fn start_writing(command_sender: mpsc::Sender<Command>) {
+        log::info!("Start writing");
+
         let stdin = io::stdin();
         let reader = BufReader::new(stdin);
         let mut lines = reader.lines();
@@ -40,7 +53,9 @@ impl Client {
             let msg = Message::build(Some(line), None::<PathBuf>).await.unwrap();
             let (response_sender, mut response_receiver) = oneshot::channel::<String>();
             let command = Command::SendMessage { response_sender, msg };
+
             command_sender.send(command).await.unwrap();
+
             for _ in 0..10 {
                 if let Ok(response) = response_receiver.try_recv() {
                     println!("{}", response);
@@ -53,8 +68,16 @@ impl Client {
     }
 
     pub async fn run(self) {
-        Self::start_receiving(self.msg_receiver).await;
+        log::info!("Running client...");
 
+        Self::start_receiving(self.msg_receiver).await;
         Self::start_writing(self.command_sender).await;
+    }
+
+    pub fn create_download_dir(&self) {
+        match std::fs::create_dir(&self.download_path) {
+            Ok(_) => log::info!("Default dir created successfully"),
+            Err(e) => log::error!("Couldn't create default dir: {e}"),
+        }
     }
 }
