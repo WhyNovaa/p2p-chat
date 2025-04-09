@@ -24,7 +24,7 @@ impl Client {
         tokio::spawn(async move {
             loop {
                 if let Ok(response) = msg_receiver.try_recv() {
-                    println!("{}: ", response.1);
+                    println!("{}: {}", response.1, response.0);
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }

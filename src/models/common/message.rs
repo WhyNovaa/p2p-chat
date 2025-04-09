@@ -1,7 +1,9 @@
+use std::fmt::{Display, Formatter};
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 use crate::models::common::errors::FileError;
 use crate::models::common::file::File;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Message {
     pub data: Option<String>,
@@ -25,5 +27,24 @@ impl Message {
 
     pub fn is_empty(&self) -> bool {
         self.data.is_none() && self.file.is_none()
+    }
+}
+
+impl Display for Message {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match (&self.data, &self.file) {
+            (Some(data), Some(file)) => {
+                write!(f, "{}, File: {}", data, file.name)
+            }
+            (Some(data), None) => {
+                write!(f, "{}", data)
+            }
+            (None, Some(file)) => {
+                write!(f, "File: {}", file.name)
+            }
+            (None, None) => {
+                write!(f, "*Empty message*")
+            }
+        }
     }
 }
