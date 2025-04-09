@@ -2,9 +2,9 @@ use std::path::PathBuf;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::{mpsc, oneshot};
-use crate::models::client::command::Command;
-use crate::models::swarm::message::Message;
-use crate::models::swarm::short_peer_id::ShortPeerId;
+use crate::models::common::command::Command;
+use crate::models::common::message::Message;
+use crate::models::common::short_peer_id::ShortPeerId;
 
 pub struct Client {
     command_sender: mpsc::Sender<Command>,

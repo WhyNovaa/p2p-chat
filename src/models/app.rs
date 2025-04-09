@@ -1,10 +1,10 @@
 use tokio::sync::mpsc;
-use crate::models::client::client::Client;
-use crate::models::client::command::Command;
-use crate::models::swarm::message::Message;
 use crate::models::swarm::swarm_manager::SwarmManager;
 use anyhow::Result;
-use crate::models::swarm::short_peer_id::ShortPeerId;
+use crate::models::client::Client;
+use crate::models::common::command::Command;
+use crate::models::common::message::Message;
+use crate::models::common::short_peer_id::ShortPeerId;
 
 pub struct App {
     client: Client,

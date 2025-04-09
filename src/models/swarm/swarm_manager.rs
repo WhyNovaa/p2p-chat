@@ -5,12 +5,12 @@ use libp2p::gossipsub::IdentTopic;
 use libp2p::mdns::Event;
 use libp2p::swarm::SwarmEvent;
 use tokio::sync::mpsc;
-use crate::models::client::command::Command;
-use crate::models::swarm::errors::SendingError;
-use crate::models::swarm::message::Message;
+use crate::models::common::command::Command;
+use crate::models::common::errors::SendingError;
+use crate::models::common::message::Message;
+use crate::models::common::short_peer_id::ShortPeerId;
 use crate::traits::decode::Decode;
 use crate::traits::encode::Encode;
-use crate::models::swarm::short_peer_id::ShortPeerId;
 
 pub struct SwarmManager {
     swarm: Swarm<ChatBehaviour>,

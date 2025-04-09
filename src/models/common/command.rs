@@ -1,5 +1,5 @@
 use tokio::sync::oneshot;
-use crate::models::swarm::message::Message;
+use crate::models::common::message::Message;
 
 #[derive(Debug)]
 pub enum Command {

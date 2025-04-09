@@ -1,8 +1,7 @@
 use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::models::swarm::errors::FileError;
-use crate::models::swarm::file::File;
-
+use crate::models::common::errors::FileError;
+use crate::models::common::file::File;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Message {
     pub data: Option<String>,
