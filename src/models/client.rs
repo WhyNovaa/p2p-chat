@@ -1,10 +1,10 @@
-use tokio::io;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::sync::{mpsc, oneshot};
 use crate::models::common::command::Command;
 use crate::models::common::file::File;
 use crate::models::common::message::Message;
 use crate::models::common::short_peer_id::ShortPeerId;
+use tokio::io;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::sync::{mpsc, oneshot};
 
 pub struct Client {
     command_sender: mpsc::Sender<Command>,
@@ -12,12 +12,13 @@ pub struct Client {
     msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>,
     download_path: String,
     current_file: Option<File>,
-
 }
 
 impl Client {
-    pub fn new(msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>, command_sender: mpsc::Sender<Command>) -> Self {
-
+    pub fn new(
+        msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>,
+        command_sender: mpsc::Sender<Command>,
+    ) -> Self {
         let download_path = "./downloads".to_string();
 
         let current_file = None;
@@ -34,7 +35,10 @@ impl Client {
         client
     }
 
-    pub async fn start_receiving(download_path: String, mut msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>) {
+    pub async fn start_receiving(
+        download_path: String,
+        mut msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>,
+    ) {
         log::info!("Start receiving");
 
         tokio::spawn(async move {
@@ -48,7 +52,10 @@ impl Client {
         });
     }
 
-    pub async fn start_writing(mut current_file: Option<File>, command_sender: mpsc::Sender<Command>) {
+    pub async fn start_writing(
+        mut current_file: Option<File>,
+        command_sender: mpsc::Sender<Command>,
+    ) {
         log::info!("Start writing");
 
         println!("----------------------------------");
@@ -85,7 +92,8 @@ impl Client {
                     wait_for_response(response_receiver).await;
                 }
                 ["msg", message] => {
-                    let msg = Message::build(Some(message.to_string()), current_file.to_owned()).await;
+                    let msg =
+                        Message::build(Some(message.to_string()), current_file.to_owned()).await;
 
                     let (command, response_receiver) = Command::new_send_message(msg);
 

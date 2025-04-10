@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
-use serde::{Deserialize, Serialize};
 use crate::models::common::file::File;
+use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Message {
@@ -11,10 +11,7 @@ pub struct Message {
 impl Message {
     /// Won't panic if path is None
     pub async fn build(data: Option<String>, file: Option<File>) -> Self {
-        Self {
-            data,
-            file
-        }
+        Self { data, file }
     }
 
     pub fn is_empty(&self) -> bool {

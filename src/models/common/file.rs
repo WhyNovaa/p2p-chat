@@ -1,6 +1,6 @@
-use std::path::Path;
-use serde::{Deserialize, Serialize};
 use crate::models::common::errors::FileError;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct File {
@@ -10,9 +10,12 @@ pub struct File {
 
 impl File {
     pub async fn from(path: impl AsRef<Path> + Clone) -> Result<Self, FileError> {
-        let data = tokio::fs::read(path.clone()).await.map_err(|_| FileError::CouldntReadFile)?;
+        let data = tokio::fs::read(path.clone())
+            .await
+            .map_err(|_| FileError::CouldntReadFile)?;
 
-        let name = path.as_ref()
+        let name = path
+            .as_ref()
             .file_name()
             .unwrap() // can unwrap because if path doesn't provide name we can't read file
             .to_str()
@@ -29,11 +32,11 @@ impl File {
             Ok(_) => {
                 log::info!("File: {} saved successfully", self.name);
                 true
-            },
+            }
             Err(e) => {
                 log::error!("Error while saving file: {e}");
                 false
-            },
+            }
         }
     }
 }
@@ -41,8 +44,8 @@ impl File {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
     use tokio::fs;
 
     #[tokio::test]

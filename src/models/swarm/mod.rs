@@ -1,2 +1,2 @@
-pub mod swarm_manager;
 mod behaviour;
+pub mod swarm_manager;

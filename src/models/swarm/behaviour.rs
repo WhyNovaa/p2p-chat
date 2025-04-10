@@ -1,9 +1,9 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
-use std::time::Duration;
-use libp2p::{gossipsub, mdns};
-use libp2p::swarm::NetworkBehaviour;
 use anyhow::Result;
 use libp2p::identity::Keypair;
+use libp2p::swarm::NetworkBehaviour;
+use libp2p::{gossipsub, mdns};
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::time::Duration;
 
 #[derive(NetworkBehaviour)]
 pub struct ChatBehaviour {
@@ -15,7 +15,10 @@ impl ChatBehaviour {
     pub fn build(key: &Keypair) -> Result<Self> {
         let message_id_fn = |message: &gossipsub::Message| {
             let sequence_number = message.sequence_number.expect("Anonym can't sent message");
-            let peer_id_as_base58  = message.source.as_ref().map_or("".to_string(), |s| s.to_base58());
+            let peer_id_as_base58 = message
+                .source
+                .as_ref()
+                .map_or("".to_string(), |s| s.to_base58());
 
             let unique_id = format!("{}-{}", sequence_number, peer_id_as_base58);
 
@@ -35,10 +38,10 @@ impl ChatBehaviour {
         let gossipsub = gossipsub::Behaviour::new(
             gossipsub::MessageAuthenticity::Signed(key.clone()),
             gossipsub_config,
-        ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        )
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
-        let mdns =
-            mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
+        let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
         Ok(ChatBehaviour { gossipsub, mdns })
     }
 }

@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::models::app::App;
+use anyhow::Result;
 
 mod models;
 mod traits;
@@ -12,6 +12,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
-
-

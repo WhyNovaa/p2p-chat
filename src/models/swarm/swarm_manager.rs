@@ -1,16 +1,16 @@
-use libp2p::{gossipsub, noise, tcp, yamux, Swarm};
-use crate::models::swarm::behaviour::{ChatBehaviour, ChatBehaviourEvent};
-use libp2p::futures::StreamExt;
-use libp2p::gossipsub::IdentTopic;
-use libp2p::mdns::Event;
-use libp2p::swarm::SwarmEvent;
-use tokio::sync::mpsc;
 use crate::models::common::command::Command;
 use crate::models::common::errors::SendingError;
 use crate::models::common::message::Message;
 use crate::models::common::short_peer_id::ShortPeerId;
+use crate::models::swarm::behaviour::{ChatBehaviour, ChatBehaviourEvent};
 use crate::traits::decode::Decode;
 use crate::traits::encode::Encode;
+use libp2p::futures::StreamExt;
+use libp2p::gossipsub::IdentTopic;
+use libp2p::mdns::Event;
+use libp2p::swarm::SwarmEvent;
+use libp2p::{Swarm, gossipsub, noise, tcp, yamux};
+use tokio::sync::mpsc;
 
 pub struct SwarmManager {
     swarm: Swarm<ChatBehaviour>,
@@ -20,14 +20,17 @@ pub struct SwarmManager {
 }
 
 impl SwarmManager {
-    pub fn build(msg_sender: mpsc::Sender<(Message, ShortPeerId)>, command_receiver: mpsc::Receiver<Command>) -> anyhow::Result<Self> {
+    pub fn build(
+        msg_sender: mpsc::Sender<(Message, ShortPeerId)>,
+        command_receiver: mpsc::Receiver<Command>,
+    ) -> anyhow::Result<Self> {
         log::info!("Creating SwarmManager");
         let mut swarm = build_swarm()?;
 
         swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
         swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
 
-        Ok(Self{
+        Ok(Self {
             swarm,
             command_receiver,
             msg_sender,
@@ -48,12 +51,10 @@ impl SwarmManager {
 
     pub fn with_topic(mut self, topic_name: impl Into<String>) -> Self {
         match self.subscribe(topic_name) {
-            Ok(res) => {
-                match res {
-                    true => log::info!("Swarm subscribed to the topic successfully"),
-                    false => log::warn!("Swarm is already subscribed to to this topic"),
-                }
-            }
+            Ok(res) => match res {
+                true => log::info!("Swarm subscribed to the topic successfully"),
+                false => log::warn!("Swarm is already subscribed to to this topic"),
+            },
             Err(_) => log::error!("Something went wrong"),
         };
         self
@@ -61,33 +62,37 @@ impl SwarmManager {
 
     pub async fn handle_event(&mut self, event: SwarmEvent<ChatBehaviourEvent>) {
         match event {
-            SwarmEvent::Behaviour(ChatBehaviourEvent::Mdns(mdns_event)) => {
-                match mdns_event {
-                    Event::Discovered(peers) => {
-                        for (peer_id, _multiaddr) in peers {
-                            log::info!("mDNS discovered a new peer: {peer_id}");
-                            self.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                        }
+            SwarmEvent::Behaviour(ChatBehaviourEvent::Mdns(mdns_event)) => match mdns_event {
+                Event::Discovered(peers) => {
+                    for (peer_id, _multiaddr) in peers {
+                        log::info!("mDNS discovered a new peer: {peer_id}");
+                        self.swarm
+                            .behaviour_mut()
+                            .gossipsub
+                            .add_explicit_peer(&peer_id);
                     }
-                    Event::Expired(peers) => {
-                        for (peer_id, _multiaddr) in peers {
-                            log::info!("mDNS discover peer has expired: {peer_id}");
-                            self.swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
-                        }
+                }
+                Event::Expired(peers) => {
+                    for (peer_id, _multiaddr) in peers {
+                        log::info!("mDNS discover peer has expired: {peer_id}");
+                        self.swarm
+                            .behaviour_mut()
+                            .gossipsub
+                            .remove_explicit_peer(&peer_id);
                     }
                 }
             },
             SwarmEvent::Behaviour(ChatBehaviourEvent::Gossipsub(gossipsub::Event::Message {
-                                                                    propagation_source: peer_id,
-                                                                    message_id: id,
-                                                                    message,
-                                                                })) => {
+                propagation_source: peer_id,
+                message_id: id,
+                message,
+            })) => {
                 let msg = match Message::decode(&mut message.data.as_slice()) {
                     Ok(msg) => msg,
                     Err(e) => {
                         log::error!("Couldn't decode message: {}", e);
                         return;
-                    },
+                    }
                 };
 
                 if msg.is_empty() {
@@ -101,7 +106,7 @@ impl SwarmManager {
                     Ok(_) => {}
                     Err(e) => log::error!("Couldn't send message to client: {}", e),
                 }
-            },
+            }
             SwarmEvent::NewListenAddr { address, .. } => {
                 log::info!("Local node is listening on {address}");
             }
@@ -111,7 +116,10 @@ impl SwarmManager {
 
     async fn handle_command(&mut self, command: Option<Command>) {
         match command {
-            Some(Command::SendMessage { response_sender, msg}) => {
+            Some(Command::SendMessage {
+                response_sender,
+                msg,
+            }) => {
                 log::info!("Sending message...");
 
                 let ans = match self.send_message(msg) {
@@ -133,26 +141,29 @@ impl SwarmManager {
                 if let Err(e) = response_sender.send(ans) {
                     log::error!("Response wasn't sent to client: {e}");
                 }
-
             }
-            Some(Command::Subscribe { response_sender, topic_name,  }) => {
+            Some(Command::Subscribe {
+                response_sender,
+                topic_name,
+            }) => {
                 log::info!("Subscribing topic...");
 
                 let ans = match self.subscribe(topic_name) {
-                    Ok(res) => {
-                        match res {
-                            true => "You have subscribed to the topic successfully",
-                            false => "You are already subscribed to to this topic",
-                        }
-                    }
+                    Ok(res) => match res {
+                        true => "You have subscribed to the topic successfully",
+                        false => "You are already subscribed to to this topic",
+                    },
                     Err(_) => "Something went wrong",
                 };
 
-                if let Err(e) =  response_sender.send(ans.to_string()) {
+                if let Err(e) = response_sender.send(ans.to_string()) {
                     log::error!("Response wasn't sent to client: {e}");
                 };
-            },
-            Some(Command::Unsubscribe { response_sender, topic_name }) => {
+            }
+            Some(Command::Unsubscribe {
+                response_sender,
+                topic_name,
+            }) => {
                 log::info!("Unsubscribing topic...");
 
                 let ans = match self.unsubscribe(topic_name) {
@@ -161,10 +172,10 @@ impl SwarmManager {
                 };
 
                 match response_sender.send(ans.to_string()) {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => log::error!("Response wasn't sent to client: {e}"),
                 };
-            },
+            }
             None => {}
         }
     }
@@ -173,10 +184,7 @@ impl SwarmManager {
         log::info!("Subscribing topic...");
         let topic = IdentTopic::new(topic_name);
 
-        let res = self.swarm
-            .behaviour_mut()
-            .gossipsub
-            .subscribe(&topic)?;
+        let res = self.swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
         self.current_topic = Some(topic);
 
@@ -187,11 +195,7 @@ impl SwarmManager {
         log::info!("Unsubscribing topic...");
         let topic = IdentTopic::new(topic_name);
 
-        let res = self
-            .swarm
-            .behaviour_mut()
-            .gossipsub
-            .unsubscribe(&topic);
+        let res = self.swarm.behaviour_mut().gossipsub.unsubscribe(&topic);
 
         self.current_topic = None;
 
@@ -209,8 +213,7 @@ impl SwarmManager {
             .encode_to_vec()
             .map_err(|_| SendingError::CantEncodeMessage)?;
 
-        self
-            .swarm
+        self.swarm
             .behaviour_mut()
             .gossipsub
             .publish(topic, encoded_message)?;
@@ -239,9 +242,9 @@ fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use libp2p::gossipsub::PublishError;
     use tokio::sync::oneshot;
-    use super::*;
 
     #[tokio::test]
     async fn communication_test() -> anyhow::Result<()> {
@@ -264,7 +267,10 @@ mod tests {
 
         let msg = Message::build(Some("Test".to_string()), None).await;
         let (one_shot_s, _) = oneshot::channel::<String>();
-        let command = Command::SendMessage { response_sender: one_shot_s, msg: msg.clone() };
+        let command = Command::SendMessage {
+            response_sender: one_shot_s,
+            msg: msg.clone(),
+        };
 
         command_sender1.send(command).await?;
 
@@ -295,7 +301,10 @@ mod tests {
         let msg = Message::build(Some("Test".to_string()), None).await;
         let res = sw.send_message(msg);
 
-        assert_eq!(res.unwrap_err().to_string(), SendingError::NoSubscribedTopic.to_string());
+        assert_eq!(
+            res.unwrap_err().to_string(),
+            SendingError::NoSubscribedTopic.to_string()
+        );
 
         Ok(())
     }
@@ -315,7 +324,10 @@ mod tests {
         let msg = Message::build(Some("Test".to_string()), None).await;
         let res = sw.send_message(msg);
 
-        assert_eq!(res.unwrap_err().to_string(), SendingError::Other(PublishError::InsufficientPeers).to_string());
+        assert_eq!(
+            res.unwrap_err().to_string(),
+            SendingError::Other(PublishError::InsufficientPeers).to_string()
+        );
 
         Ok(())
     }
@@ -327,14 +339,16 @@ mod tests {
 
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?;
 
-
         for _ in 0..8 {
             let ev = sw.swarm.select_next_some().await;
             sw.handle_event(ev).await;
         }
 
         let (one_shot_s, _) = oneshot::channel::<String>();
-        let command = Command::Subscribe { response_sender: one_shot_s, topic_name: "4test".to_string() };
+        let command = Command::Subscribe {
+            response_sender: one_shot_s,
+            topic_name: "4test".to_string(),
+        };
 
         command_sender.send(command).await?;
 
@@ -352,14 +366,16 @@ mod tests {
         let (msg_sender, _) = mpsc::channel::<(Message, ShortPeerId)>(20);
         let mut sw = SwarmManager::build(msg_sender, command_receiver)?.with_topic("5test");
 
-
         for _ in 0..8 {
             let ev = sw.swarm.select_next_some().await;
             sw.handle_event(ev).await;
         }
 
         let (one_shot_s, _) = oneshot::channel::<String>();
-        let command = Command::Unsubscribe { response_sender: one_shot_s, topic_name: "5test".to_string() };
+        let command = Command::Unsubscribe {
+            response_sender: one_shot_s,
+            topic_name: "5test".to_string(),
+        };
 
         command_sender.send(command).await?;
 

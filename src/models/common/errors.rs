@@ -5,7 +5,7 @@ pub enum FileError {
     #[error("Couldn't read file")]
     CouldntReadFile,
     #[error("Filename is not in UTF-8")]
-    WrongEncoding
+    WrongEncoding,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -17,6 +17,3 @@ pub enum SendingError {
     #[error("Other error {0}")]
     Other(#[from] PublishError),
 }
-
-
-
