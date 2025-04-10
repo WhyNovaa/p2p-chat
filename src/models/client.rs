@@ -162,8 +162,8 @@ pub async fn wait_for_response(response_receiver: oneshot::Receiver<String>) {
 
 fn print_available_commands() {
     println!("Available commands:");
-    println!("  subscribe <topic>");
+    println!("  subscribe <topic> - subscribe topic");
     println!("  unsubscribe <topic> - unsubscribe topic ");
     println!("  msg <message> - send message");
-    println!("  file <path> - adds file to next message if file exists");
+    println!("  file <path> - add file to next message if file exists");
 }
