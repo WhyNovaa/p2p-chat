@@ -18,7 +18,7 @@ impl Message {
         self.data.is_none() && self.file.is_none()
     }
 
-    pub async fn try_to_download_file(self, path: String) -> bool {
+    pub async fn try_to_download_file(self, path: &str) -> bool {
         if let Some(file) = self.file {
             return file.save(path).await;
         }

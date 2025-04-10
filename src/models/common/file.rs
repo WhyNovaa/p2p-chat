@@ -25,7 +25,7 @@ impl File {
         Ok(Self { name, data })
     }
 
-    pub async fn save(self, path: String) -> bool {
+    pub async fn save(self, path: &str) -> bool {
         let full_path = format!("{}/{}", path, self.name);
 
         match tokio::fs::write(full_path, self.data).await {
