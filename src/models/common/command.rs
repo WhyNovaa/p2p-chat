@@ -16,3 +16,29 @@ pub enum Command {
         topic_name: String,
     }
 }
+
+impl Command {
+    pub fn new_send_message(msg: Message) -> (Self, oneshot::Receiver<String>) {
+        let (response_sender, response_receiver) = oneshot::channel::<String>();
+
+        let command = Command::SendMessage {response_sender, msg};
+
+        (command, response_receiver)
+    }
+
+    pub fn new_subscribe(topic_name: String) -> (Self, oneshot::Receiver<String>) {
+        let (response_sender, response_receiver) = oneshot::channel::<String>();
+
+        let command = Command::Subscribe {response_sender, topic_name};
+
+        (command, response_receiver)
+    }
+
+    pub fn new_unsubscribe(topic_name: String) -> (Self, oneshot::Receiver<String>) {
+        let (response_sender, response_receiver) = oneshot::channel::<String>();
+
+        let command = Command::Unsubscribe {response_sender, topic_name};
+
+        (command, response_receiver)
+    }
+}

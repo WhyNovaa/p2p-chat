@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::models::common::errors::FileError;
 use crate::models::common::file::File;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -12,21 +10,22 @@ pub struct Message {
 
 impl Message {
     /// Won't panic if path is None
-    pub async fn build(data: Option<String>, path: Option<impl AsRef<Path> + Clone>) -> Result<Self, FileError> {
-
-        let file = match path.is_some() {
-            true => Some(File::new(path.unwrap()).await?),
-            false => None,
-        };
-
-        Ok(Self {
+    pub async fn build(data: Option<String>, file: Option<File>) -> Self {
+        Self {
             data,
             file
-        })
+        }
     }
 
     pub fn is_empty(&self) -> bool {
         self.data.is_none() && self.file.is_none()
+    }
+
+    pub async fn try_to_download_file(self, path: String) -> bool {
+        if let Some(file) = self.file {
+            return file.save(path).await;
+        }
+        false
     }
 }
 
