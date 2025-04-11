@@ -19,7 +19,7 @@ impl App {
 
         let client = Client::new(msg_receiver, command_sender);
 
-        let swarm_manager = SwarmManager::build(msg_sender, command_receiver)?.with_topic("test1");
+        let swarm_manager = SwarmManager::build(msg_sender, command_receiver)?;
 
         Ok(Self {
             client,
