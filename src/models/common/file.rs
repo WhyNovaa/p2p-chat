@@ -46,7 +46,6 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
-    use tokio::fs;
 
     #[tokio::test]
     async fn test_create_file_success() {
