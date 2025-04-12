@@ -9,7 +9,6 @@ pub struct Message {
 }
 
 impl Message {
-    /// Won't panic if path is None
     pub async fn build(data: Option<String>, file: Option<File>) -> Self {
         Self { data, file }
     }
