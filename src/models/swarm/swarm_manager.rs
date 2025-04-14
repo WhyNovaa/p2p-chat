@@ -244,7 +244,6 @@ fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
 mod tests {
     use super::*;
     use libp2p::gossipsub::PublishError;
-    use tokio::sync::oneshot;
 
     #[cfg(unix)]
     #[tokio::test]
@@ -267,11 +266,7 @@ mod tests {
         }
 
         let msg = Message::build(Some("Test".to_string()), None).await;
-        let (one_shot_s, _) = oneshot::channel::<String>();
-        let command = Command::SendMessage {
-            response_sender: one_shot_s,
-            msg: msg.clone(),
-        };
+        let (command, _) = Command::new_send_message(msg.clone());
 
         command_sender1.send(command).await?;
 
@@ -345,11 +340,7 @@ mod tests {
             sw.handle_event(ev).await;
         }
 
-        let (one_shot_s, _) = oneshot::channel::<String>();
-        let command = Command::Subscribe {
-            response_sender: one_shot_s,
-            topic_name: "4test".to_string(),
-        };
+        let (command, _) = Command::new_subscribe("4test".to_string());
 
         command_sender.send(command).await?;
 
@@ -372,11 +363,7 @@ mod tests {
             sw.handle_event(ev).await;
         }
 
-        let (one_shot_s, _) = oneshot::channel::<String>();
-        let command = Command::Unsubscribe {
-            response_sender: one_shot_s,
-            topic_name: "5test".to_string(),
-        };
+        let (command, _) = Command::new_unsubscribe("5test".to_string());
 
         command_sender.send(command).await?;
 
