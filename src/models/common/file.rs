@@ -46,6 +46,7 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
+    //use tokio::fs;
 
     #[tokio::test]
     async fn test_create_file_success() {
@@ -80,16 +81,17 @@ mod tests {
     async fn test_invalid_encoding() {
         use std::ffi::OsStr;
         use std::os::unix::ffi::OsStrExt;
+        use tokio;
 
         let invalid_bytes = &[0x80, 0x81];
         let invalid_os_str = OsStr::from_bytes(invalid_bytes);
         let path = Path::new(invalid_os_str);
 
-        let _ = fs::File::create(&path).await.unwrap();
+        let _ = tokio::fs::File::create(&path).await.unwrap();
 
         let result = File::from(&path).await;
         assert!(matches!(result, Err(FileError::WrongEncoding)));
 
-        fs::remove_file(&path).await.unwrap();
+        tokio::fs::remove_file(&path).await.unwrap();
     }
 }

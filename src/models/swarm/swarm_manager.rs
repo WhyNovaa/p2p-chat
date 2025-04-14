@@ -246,7 +246,7 @@ mod tests {
     use libp2p::gossipsub::PublishError;
     use tokio::sync::oneshot;
 
-    #[ignore]
+    #[cfg(unix)]
     #[tokio::test]
     async fn communication_test() -> anyhow::Result<()> {
         let (command_sender1, command_receiver1) = mpsc::channel::<Command>(20);
@@ -259,7 +259,7 @@ mod tests {
 
         let mut sw2 = SwarmManager::build(msg_sender2, command_receiver2)?.with_topic("1test");
 
-        for _ in 0..21 {
+        for _ in 0..24 {
             let ev = sw1.swarm.select_next_some().await;
             sw1.handle_event(ev).await;
             let ev = sw2.swarm.select_next_some().await;
