@@ -17,7 +17,7 @@ impl File {
         let name = path
             .as_ref()
             .file_name()
-            .unwrap() // can unwrap because if path doesn't provide name we can't read file
+            .ok_or(FileError::CouldntReadFile)?
             .to_str()
             .ok_or(FileError::WrongEncoding)?
             .to_owned();
