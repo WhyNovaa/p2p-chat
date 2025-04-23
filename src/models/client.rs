@@ -101,8 +101,6 @@ impl Client {
                     }
 
                     wait_for_response(response_receiver).await;
-
-                    //current_file = None;
                 }
                 ["file", path] => {
                     current_file = match File::from(path).await {
