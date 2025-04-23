@@ -138,7 +138,10 @@ impl Client {
     pub fn create_download_dir(&self) {
         match std::fs::create_dir(&self.download_path) {
             Ok(_) => log::info!("Default dir created successfully"),
-            Err(e) => log::warn!("Couldn't create default dir: {e}"),
+            Err(e) => match e.kind() {
+                    io::ErrorKind::AlreadyExists => log::warn!("Download directory already exists"),
+                    _ => log::error!("Couldn't create default dir: {e}"),
+                }
         }
     }
 }
