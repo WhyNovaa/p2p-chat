@@ -146,7 +146,7 @@ impl SwarmManager {
                 response_sender,
                 topic_name,
             }) => {
-                log::info!("Subscribing topic...");
+                log::info!("Subscribing topic {topic_name}...");
 
                 let ans = match self.subscribe(topic_name) {
                     Ok(res) => match res {
@@ -164,7 +164,7 @@ impl SwarmManager {
                 response_sender,
                 topic_name,
             }) => {
-                log::info!("Unsubscribing topic...");
+                log::info!("Subscribing topic {topic_name}...");
 
                 let ans = match self.unsubscribe(topic_name) {
                     true => "You have unsubscribed from the topic successfully",
@@ -181,7 +181,6 @@ impl SwarmManager {
     }
 
     pub fn subscribe(&mut self, topic_name: impl Into<String>) -> anyhow::Result<bool> {
-        log::info!("Subscribing topic...");
         let topic = IdentTopic::new(topic_name);
 
         let res = self.swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
@@ -192,7 +191,6 @@ impl SwarmManager {
     }
 
     pub fn unsubscribe(&mut self, topic_name: String) -> bool {
-        log::info!("Unsubscribing topic...");
         let topic = IdentTopic::new(topic_name);
 
         let res = self.swarm.behaviour_mut().gossipsub.unsubscribe(&topic);
