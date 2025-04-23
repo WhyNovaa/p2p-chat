@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio = {version = "1.44.1", features = ["full"]}
+tokio = {version = "1.44.1", features = ["fs", "io-util", "io-std", "macros", "rt-multi-thread"]}
 libp2p = { version = "0.55.0", features =[
     "macros", "tcp", "tokio",
     "noise", "yamux", "mdns",
