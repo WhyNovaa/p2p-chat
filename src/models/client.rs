@@ -90,7 +90,7 @@ impl Client {
                 }
                 ["msg", message] => {
                     let msg =
-                        Message::build(Some(message.to_string()), current_file.to_owned()).await;
+                        Message::build(Some(message.to_string()), Option::take(&mut current_file)).await;
 
                     let (command, response_receiver) = Command::new_send_message(msg);
 
@@ -102,7 +102,7 @@ impl Client {
 
                     wait_for_response(response_receiver).await;
 
-                    current_file = None;
+                    //current_file = None;
                 }
                 ["file", path] => {
                     current_file = match File::from(path).await {
