@@ -42,12 +42,9 @@ impl Client {
         log::info!("Start receiving");
 
         tokio::spawn(async move {
-            loop {
-                if let Ok((msg, peer_id)) = msg_receiver.try_recv() {
-                    println!("{}: {}", peer_id, msg);
-                    msg.try_to_download_file(&download_path).await;
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            if let Some((msg, peer_id)) = msg_receiver.recv().await {
+                println!("{}: {}", peer_id, msg);
+                msg.try_to_download_file(&download_path).await;
             }
         });
     }
