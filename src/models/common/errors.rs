@@ -1,3 +1,4 @@
+use bincode::error::EncodeError;
 use libp2p::gossipsub::PublishError;
 
 #[derive(Debug, thiserror::Error)]
@@ -13,7 +14,7 @@ pub enum SendingError {
     #[error("Swarm is not subscribed to the topic")]
     NoSubscribedTopic,
     #[error("Message encoding error")]
-    CantEncodeMessage,
+    CantEncodeMessage(#[from] EncodeError),
     #[error("Other error {0}")]
     Other(#[from] PublishError),
 }

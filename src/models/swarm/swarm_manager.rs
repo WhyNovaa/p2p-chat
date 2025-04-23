@@ -128,8 +128,8 @@ impl SwarmManager {
                         log::info!("Swarm not subscribed to any topic");
                         "You are not subscribed to any topic".to_string()
                     }
-                    Err(SendingError::CantEncodeMessage) => {
-                        log::info!("Can't encode message");
+                    Err(SendingError::CantEncodeMessage(e)) => {
+                        log::info!("Can't encode message: {e}");
                         "Something wrong with the message".to_string()
                     }
                     Err(SendingError::Other(e)) => {
@@ -211,7 +211,7 @@ impl SwarmManager {
 
         let encoded_message = message
             .encode_to_vec()
-            .map_err(|_| SendingError::CantEncodeMessage)?;
+            .map_err(|e| SendingError::CantEncodeMessage(e))?;
 
         self.swarm
             .behaviour_mut()
