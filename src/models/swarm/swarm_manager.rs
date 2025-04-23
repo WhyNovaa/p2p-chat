@@ -55,7 +55,7 @@ impl SwarmManager {
                 true => log::info!("Swarm subscribed to the topic successfully"),
                 false => log::warn!("Swarm is already subscribed to to this topic"),
             },
-            Err(_) => log::error!("Something went wrong"),
+            Err(e) => log::error!("Something went wrong: {e}"),
         };
         self
     }
@@ -90,7 +90,7 @@ impl SwarmManager {
                 let msg = match Message::decode(&mut message.data.as_slice()) {
                     Ok(msg) => msg,
                     Err(e) => {
-                        log::error!("Couldn't decode message: {}", e);
+                        log::error!("Couldn't decode message: {e}");
                         return;
                     }
                 };
@@ -104,7 +104,7 @@ impl SwarmManager {
                 log::info!("Got message: '{msg}' with id: {id} from peer: {peer_id}");
                 match self.msg_sender.send((msg, sender_peer_id)).await {
                     Ok(_) => {}
-                    Err(e) => log::error!("Couldn't send message to client: {}", e),
+                    Err(e) => log::error!("Couldn't send message to client: {e}"),
                 }
             }
             SwarmEvent::NewListenAddr { address, .. } => {
