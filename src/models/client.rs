@@ -96,7 +96,7 @@ impl Client {
 
                     if let Err(e) = command_sender.send(command).await {
                         log::error!("Error while sending message to swarm_manager: {e}");
-                        println!("> Something went wrong, try again");
+                        println!("> Something went wrong while sending message: {e}, try again");
                         continue;
                     }
 
@@ -113,7 +113,7 @@ impl Client {
                         }
                         Err(e) => {
                             log::error!("Error while reading file: {e}");
-                            println!("> Something went wrong while loading file");
+                            println!("> Something went wrong while loading file: {e}");
                             None
                         }
                     }
