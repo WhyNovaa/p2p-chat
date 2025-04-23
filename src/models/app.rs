@@ -1,3 +1,4 @@
+use std::process::exit;
 use crate::models::client::Client;
 use crate::models::common::command::Command;
 use crate::models::common::message::Message;
@@ -38,6 +39,16 @@ impl App {
             self.client.run().await;
         });
 
-        let _ = tokio::join!(swarm_task, client_task);
+        let (swarm_res, client_res) = tokio::join!(swarm_task, client_task);
+
+        if let Err(e) = swarm_res {
+            log::error!("Error in swarm_manager: {e}. Shutting down...");
+            exit(1);
+        }
+
+        if let Err(e) = client_res {
+            log::error!("Error in client: {e}. Shutting down...");
+            exit(2);
+        }
     }
 }
