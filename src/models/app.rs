@@ -6,6 +6,8 @@ use crate::models::swarm::swarm_manager::SwarmManager;
 use anyhow::Result;
 use tokio::sync::mpsc;
 
+const BUFFER_SIZE: usize = 30;
+
 pub struct App {
     client: Client,
     swarm_manager: SwarmManager,
@@ -13,9 +15,9 @@ pub struct App {
 
 impl App {
     pub fn new() -> Result<Self> {
-        let (command_sender, command_receiver) = mpsc::channel::<Command>(30);
+        let (command_sender, command_receiver) = mpsc::channel::<Command>(BUFFER_SIZE);
 
-        let (msg_sender, msg_receiver) = mpsc::channel::<(Message, ShortPeerId)>(30);
+        let (msg_sender, msg_receiver) = mpsc::channel::<(Message, ShortPeerId)>(BUFFER_SIZE);
 
         let client = Client::new(msg_receiver, command_sender);
 
