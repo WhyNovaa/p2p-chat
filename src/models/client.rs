@@ -1,15 +1,13 @@
-use std::path::PathBuf;
-use clap::Parser;
 use crate::models::args::Args;
 use crate::models::common::command::Command;
 use crate::models::common::file::File;
 use crate::models::common::message::Message;
 use crate::models::common::short_peer_id::ShortPeerId;
+use clap::Parser;
+use std::path::PathBuf;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::{mpsc, oneshot};
-
-
 
 pub struct Client {
     command_sender: mpsc::Sender<Command>,
@@ -98,7 +96,8 @@ impl Client {
                 }
                 ["msg", message] => {
                     let msg =
-                        Message::build(Some(message.to_string()), Option::take(&mut current_file)).await;
+                        Message::build(Some(message.to_string()), Option::take(&mut current_file))
+                            .await;
 
                     let (command, response_receiver) = Command::new_send_message(msg);
 
@@ -145,9 +144,9 @@ impl Client {
         match std::fs::create_dir(&self.download_path) {
             Ok(_) => log::info!("Download dir created successfully"),
             Err(e) => match e.kind() {
-                    io::ErrorKind::AlreadyExists => log::warn!("Download directory already exists"),
-                    _ => log::error!("Couldn't create default dir: {e}"),
-                }
+                io::ErrorKind::AlreadyExists => log::warn!("Download directory already exists"),
+                _ => log::error!("Couldn't create default dir: {e}"),
+            },
         }
     }
 }

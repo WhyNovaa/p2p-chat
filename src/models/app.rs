@@ -1,10 +1,10 @@
-use std::process::exit;
 use crate::models::client::Client;
 use crate::models::common::command::Command;
 use crate::models::common::message::Message;
 use crate::models::common::short_peer_id::ShortPeerId;
 use crate::models::swarm::swarm_manager::SwarmManager;
 use anyhow::Result;
+use std::process::exit;
 use tokio::sync::mpsc;
 
 const BUFFER_SIZE: usize = 30;
