@@ -19,3 +19,7 @@ env_logger = "0.11"
 
 [dev-dependencies]
 tempfile = "3.19.1"
+serial_test = "3.2.0"
+
+[features]
+quic = []

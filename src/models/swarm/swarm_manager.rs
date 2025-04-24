@@ -27,8 +27,15 @@ impl SwarmManager {
         log::info!("Creating SwarmManager");
         let mut swarm = build_swarm()?;
 
-        swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
-        swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+        let addresses = vec![
+            #[cfg(feature = "quic")]
+            "/ip4/0.0.0.0/udp/0/quic-v1",
+            "/ip4/0.0.0.0/tcp/0",
+        ];
+
+        for addr in addresses {
+            swarm.listen_on(addr.parse()?)?;
+        }
 
         Ok(Self {
             swarm,
@@ -220,6 +227,7 @@ impl SwarmManager {
     }
 }
 
+#[cfg(feature = "quic")]
 fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
     let swarm = libp2p::SwarmBuilder::with_new_identity()
         .with_tokio()
@@ -229,6 +237,24 @@ fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
             yamux::Config::default,
         )?
         .with_quic()
+        .with_behaviour(|key| {
+            let behaviour = ChatBehaviour::build(key)?;
+            Ok(behaviour)
+        })?
+        .build();
+
+    Ok(swarm)
+}
+
+#[cfg(not(feature = "quic"))]
+fn build_swarm() -> anyhow::Result<Swarm<ChatBehaviour>> {
+    let swarm = libp2p::SwarmBuilder::with_new_identity()
+        .with_tokio()
+        .with_tcp(
+            tcp::Config::default(),
+            noise::Config::new,
+            yamux::Config::default,
+        )?
         .with_behaviour(|key| {
             let behaviour = ChatBehaviour::build(key)?;
             Ok(behaviour)
