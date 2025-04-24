@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+use clap::Parser;
+use crate::models::args::Args;
 use crate::models::common::command::Command;
 use crate::models::common::file::File;
 use crate::models::common::message::Message;
@@ -6,11 +9,13 @@ use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::{mpsc, oneshot};
 
+
+
 pub struct Client {
     command_sender: mpsc::Sender<Command>,
     /// message and first 8 symbols of sender PeerId
     msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>,
-    download_path: String,
+    download_path: PathBuf,
     current_file: Option<File>,
 }
 
@@ -19,15 +24,18 @@ impl Client {
         msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>,
         command_sender: mpsc::Sender<Command>,
     ) -> Self {
-        let download_path = "./downloads".to_string();
+        let args = Args::parse();
 
-        let current_file = None;
+        let download_path = args.dir.filter(|path| path.is_dir()).unwrap_or_else(|| {
+            log::warn!("Invalid dir or dir wasn't entered, using default download path");
+            PathBuf::from("./downloads")
+        });
 
         let client = Self {
             command_sender,
             msg_receiver,
             download_path,
-            current_file,
+            current_file: None,
         };
 
         client.create_download_dir();
@@ -36,7 +44,7 @@ impl Client {
     }
 
     pub async fn start_receiving(
-        download_path: String,
+        download_path: PathBuf,
         mut msg_receiver: mpsc::Receiver<(Message, ShortPeerId)>,
     ) {
         log::info!("Start receiving");
@@ -135,7 +143,7 @@ impl Client {
 
     pub fn create_download_dir(&self) {
         match std::fs::create_dir(&self.download_path) {
-            Ok(_) => log::info!("Default dir created successfully"),
+            Ok(_) => log::info!("Download dir created successfully"),
             Err(e) => match e.kind() {
                     io::ErrorKind::AlreadyExists => log::warn!("Download directory already exists"),
                     _ => log::error!("Couldn't create default dir: {e}"),
