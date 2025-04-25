@@ -75,7 +75,8 @@ impl Client {
             match parse::parse_command(&input) {
                 Ok((_, cmd)) => match cmd {
                     parse::UserCommand::Subscribe(topic) => {
-                        let (command, response_receiver) = Command::new_subscribe(topic.to_string());
+                        let (command, response_receiver) =
+                            Command::new_subscribe(topic.to_string());
 
                         if let Err(e) = command_sender.send(command).await {
                             log::error!("Error while sending command to swarm_manager: {e}");
@@ -86,7 +87,8 @@ impl Client {
                         wait_for_response(response_receiver).await;
                     }
                     parse::UserCommand::Unsubscribe(topic) => {
-                        let (command, response_receiver) = Command::new_unsubscribe(topic.to_string());
+                        let (command, response_receiver) =
+                            Command::new_unsubscribe(topic.to_string());
 
                         if let Err(e) = command_sender.send(command).await {
                             log::error!("Error while sending command to swarm_manager: {e}");
@@ -97,15 +99,19 @@ impl Client {
                         wait_for_response(response_receiver).await;
                     }
                     parse::UserCommand::Msg(message) => {
-                        let msg =
-                            Message::build(Some(message.to_string()), Option::take(&mut current_file))
-                                .await;
+                        let msg = Message::build(
+                            Some(message.to_string()),
+                            Option::take(&mut current_file),
+                        )
+                        .await;
 
                         let (command, response_receiver) = Command::new_send_message(msg);
 
                         if let Err(e) = command_sender.send(command).await {
                             log::error!("Error while sending message to swarm_manager: {e}");
-                            println!("> Something went wrong while sending message: {e}, try again");
+                            println!(
+                                "> Something went wrong while sending message: {e}, try again"
+                            );
                             continue;
                         }
 
@@ -177,10 +183,10 @@ fn print_available_commands() {
 }
 
 mod parse {
+    use nom::IResult;
     use nom::branch::alt;
     use nom::bytes::complete::tag;
     use nom::combinator::map;
-    use nom::IResult;
     use nom::sequence::preceded;
 
     #[derive(Debug)]
