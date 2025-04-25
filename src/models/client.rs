@@ -133,68 +133,6 @@ impl Client {
                     println!("----------------------------------");
                 }
             }
-
-
-            /*let parts: Vec<&str> = input.splitn(2, char::is_whitespace).collect();
-            match parts.as_slice() {
-                ["subscribe", topic] => {
-                    let (command, response_receiver) = Command::new_subscribe(topic.to_string());
-
-                    if let Err(e) = command_sender.send(command).await {
-                        log::error!("Error while sending command to swarm_manager: {e}");
-                        println!("> Something went wrong, try again");
-                        continue;
-                    }
-
-                    wait_for_response(response_receiver).await;
-                }
-                ["unsubscribe", topic] => {
-                    let (command, response_receiver) = Command::new_unsubscribe(topic.to_string());
-
-                    if let Err(e) = command_sender.send(command).await {
-                        log::error!("Error while sending command to swarm_manager: {e}");
-                        println!("> Something went wrong, try again");
-                        continue;
-                    }
-
-                    wait_for_response(response_receiver).await;
-                }
-                ["msg", message] => {
-                    let msg =
-                        Message::build(Some(message.to_string()), Option::take(&mut current_file))
-                            .await;
-
-                    let (command, response_receiver) = Command::new_send_message(msg);
-
-                    if let Err(e) = command_sender.send(command).await {
-                        log::error!("Error while sending message to swarm_manager: {e}");
-                        println!("> Something went wrong while sending message: {e}, try again");
-                        continue;
-                    }
-
-                    wait_for_response(response_receiver).await;
-                }
-                ["file", path] => {
-                    current_file = match File::from(path).await {
-                        Ok(f) => {
-                            log::info!("File read successfully");
-                            println!("> File loaded successfully");
-                            Some(f)
-                        }
-                        Err(e) => {
-                            log::error!("Error while reading file: {e}");
-                            println!("> Something went wrong while loading file: {e}");
-                            None
-                        }
-                    }
-                }
-                _ => {
-                    println!("----------------------------------");
-                    println!("Wrong command!");
-                    print_available_commands();
-                    println!("----------------------------------");
-                }
-            }*/
         }
     }
 
