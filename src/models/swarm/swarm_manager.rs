@@ -56,6 +56,7 @@ impl SwarmManager {
         }
     }
 
+    #[cfg(test)]
     pub fn with_topic(mut self, topic_name: impl Into<String>) -> Self {
         match self.subscribe(topic_name) {
             Ok(res) => match res {
@@ -132,15 +133,15 @@ impl SwarmManager {
                 let ans = match self.send_message(msg) {
                     Ok(_) => "Ok".to_string(),
                     Err(SendingError::NoSubscribedTopic) => {
-                        log::info!("Swarm not subscribed to any topic");
+                        log::warn!("Swarm not subscribed to any topic");
                         "You are not subscribed to any topic".to_string()
                     }
                     Err(SendingError::CantEncodeMessage(e)) => {
-                        log::info!("Can't encode message: {e}");
+                        log::error!("Can't encode message: {e}");
                         "Something wrong with the message".to_string()
                     }
                     Err(SendingError::Other(e)) => {
-                        log::info!("Sending error: {e}");
+                        log::error!("Sending error: {e}");
                         "Something went wrong while sending message".to_string()
                     }
                 };

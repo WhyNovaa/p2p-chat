@@ -26,7 +26,7 @@ impl File {
     }
 
     pub async fn save(self, path: &PathBuf) -> bool {
-        let full_path = path.with_file_name(self.name.clone());
+        let full_path = path.join(self.name.clone());
 
         match tokio::fs::write(full_path, self.data).await {
             Ok(_) => {

@@ -17,10 +17,10 @@ thiserror = "2.0.12"
 log = "0.4.27"
 env_logger = "0.11"
 clap = { version = "4.5.35", features = ["derive"] }
+nom = "7.0.0"
 
 [dev-dependencies]
 tempfile = "3.19.1"
-serial_test = "3.2.0"
 
 [features]
 quic = []
