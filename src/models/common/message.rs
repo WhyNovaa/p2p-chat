@@ -1,7 +1,7 @@
 use crate::models::common::file::File;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Message {
@@ -18,7 +18,7 @@ impl Message {
         self.data.is_none() && self.file.is_none()
     }
 
-    pub async fn try_to_download_file(self, path: &PathBuf) -> bool {
+    pub async fn try_to_download_file(self, path: &Path) -> bool {
         if let Some(file) = self.file {
             return file.save(path).await;
         }

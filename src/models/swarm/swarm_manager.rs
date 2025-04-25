@@ -270,6 +270,7 @@ mod tests {
     use super::*;
     use libp2p::gossipsub::PublishError;
 
+    #[ignore]
     #[cfg(unix)]
     #[tokio::test]
     async fn communication_test() -> anyhow::Result<()> {

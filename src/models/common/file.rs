@@ -1,6 +1,6 @@
 use crate::models::common::errors::FileError;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct File {
@@ -25,7 +25,7 @@ impl File {
         Ok(Self { name, data })
     }
 
-    pub async fn save(self, path: &PathBuf) -> bool {
+    pub async fn save(self, path: &Path) -> bool {
         let full_path = path.join(self.name.clone());
 
         match tokio::fs::write(full_path, self.data).await {
